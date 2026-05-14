@@ -2,7 +2,9 @@
 
 set -e
 
-VERSION="3.2.2"
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin:$PATH"
+
+VERSION="3.2.3"
 INSTALL_DIR="/opt/rw-backup-restore"
 BACKUP_DIR="$INSTALL_DIR/backup"
 CONFIG_FILE="$INSTALL_DIR/config.env"
@@ -380,9 +382,7 @@ create_bot_backup() {
     fi
     
     print_message "INFO" "$(t cbot_dumping)"
-    docker exec "$BOT_CONTAINER_NAME" pg_dumpall -c -U postgres | gzip -9 > "$BACKUP_DIR/$BOT_BACKUP_FILE_DB"
-    local bot_dump_exit=${PIPESTATUS[0]}
-    if [[ $bot_dump_exit -ne 0 ]]; then
+    if ! docker exec "$BOT_CONTAINER_NAME" pg_dumpall -c -U "$BOT_BACKUP_DB_USER" | gzip -9 > "$BACKUP_DIR/$BOT_BACKUP_FILE_DB"; then
         print_message "ERROR" "$(t cbot_dump_err)"
         return 0
     fi
@@ -526,8 +526,11 @@ restore_bot_backup() {
     IFS='|' read -r BOT_CONTAINER_NAME BOT_VOLUME_NAME BOT_DIR_NAME BOT_SERVICE_NAME <<< "$bot_params"
     
     echo ""
-    restore_bot_db_user="postgres"
-    restore_bot_db_name="postgres"
+    read -rp "$(echo -e "${GREEN}[?]${RESET} $(t rbot_db_user)")" restore_bot_db_user
+    restore_bot_db_user="${restore_bot_db_user:-postgres}"
+    echo ""
+    read -rp "$(echo -e "${GREEN}[?]${RESET} $(t rbot_db_name)")" restore_bot_db_name
+    restore_bot_db_name="${restore_bot_db_name:-postgres}"
     echo ""
     print_message "INFO" "$(t rbot_starting)"
     
@@ -660,7 +663,7 @@ restore_bot_backup() {
         
         mkdir -p "$temp_restore_dir"
 
-        if ! docker exec -i "$BOT_CONTAINER_NAME" psql -q -U postgres -d postgres > /dev/null 2> "$temp_restore_dir/restore_errors.log" < "$BOT_DUMP_UNCOMPRESSED"; then
+        if ! docker exec -i "$BOT_CONTAINER_NAME" psql -q -U "$restore_bot_db_user" -d "$restore_bot_db_name" > /dev/null 2> "$temp_restore_dir/restore_errors.log" < "$BOT_DUMP_UNCOMPRESSED"; then
             print_message "ERROR" "$(t rbot_db_err)"
             echo ""
             if [[ -f "$temp_restore_dir/restore_errors.log" ]]; then
@@ -1060,16 +1063,14 @@ create_panel_db_dump() {
     
     case "$DB_CONNECTION_TYPE" in
         docker)
-            if [[ "$(docker inspect --format='{{.State.Running}}' remnawave-db 2>/dev/null)" != "true" ]]; then
+            if ! docker inspect remnawave-db > /dev/null 2>&1 || ! docker container inspect -f '{{.State.Running}}' remnawave-db 2>/dev/null | grep -q "true"; then
                 LAST_DB_ERROR="$(t db_container_missing)"
                 print_message "ERROR" "$LAST_DB_ERROR"
                 return 1
             fi
             
             local docker_error_log=$(mktemp)
-            docker exec "remnawave-db" pg_dumpall -c -U postgres 2>"$docker_error_log" | gzip -9 > "$dump_file"
-            local dump_exit_code=${PIPESTATUS[0]}
-            if [[ $dump_exit_code -ne 0 ]]; then
+            if ! docker exec "remnawave-db" pg_dumpall -c -U "$DB_USER" 2>"$docker_error_log" | gzip -9 > "$dump_file"; then
                 LAST_DB_ERROR=$(cat "$docker_error_log" 2>/dev/null | head -5 | tr '\n' ' ')
                 rm -f "$docker_error_log"
                 return 1
@@ -1133,7 +1134,7 @@ restore_panel_db_dump() {
     
     case "$DB_CONNECTION_TYPE" in
         docker)
-            if ! docker exec -i remnawave-db psql -q -U postgres -d "$restore_db_name" > /dev/null 2> "$restore_log" < "$sql_file"; then
+            if ! docker exec -i remnawave-db psql -q -U "$DB_USER" -d "$restore_db_name" > /dev/null 2> "$restore_log" < "$sql_file"; then
                 return 1
             fi
             ;;
@@ -1468,9 +1469,8 @@ create_backup() {
         print_message "INFO" "$(t bk_skip_panel)"
     else
         print_message "INFO" "$(t bk_creating_dump)"
-        create_panel_db_dump "$BACKUP_DIR/$BACKUP_FILE_DB"
-        local STATUS=$?
-        if [[ $STATUS -ne 0 ]]; then
+        if ! create_panel_db_dump "$BACKUP_DIR/$BACKUP_FILE_DB"; then
+            local STATUS=$?
             echo -e "${RED}❌ $(t bk_dump_err) ${BOLD}$STATUS${RESET}. $(t bk_check_db)${RESET}"
             local error_msg="❌ $(t bk_dump_err) ${STATUS}"
             if [[ -n "$LAST_DB_ERROR" ]]; then
@@ -2195,13 +2195,9 @@ restore_backup() {
         echo ""
         if [[ "$confirm_panel" =~ ^[Yy]$ ]]; then
             check_docker_installed || { rm -rf "$temp_restore_dir"; return 1; }
-            if [[ "$DB_CONNECTION_TYPE" == "docker" ]]; then
-                restore_db_name="postgres"
-            else
-                print_message "INFO" "$(t rs_enter_dbname)"
-                read -rp "$(t input_prompt)" restore_db_name
-                restore_db_name="${restore_db_name:-postgres}"
-            fi
+            print_message "INFO" "$(t rs_enter_dbname)"
+            read -rp "$(t input_prompt)" restore_db_name
+            restore_db_name="${restore_db_name:-postgres}"
 
             if [[ "$DB_CONNECTION_TYPE" == "docker" ]]; then
                 if [[ -d "$REMNALABS_ROOT_DIR" ]]; then
