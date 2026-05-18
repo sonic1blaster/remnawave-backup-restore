@@ -4,7 +4,7 @@ set -e
 
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin:$PATH"
 
-VERSION="3.2.10 (dev)"
+VERSION="3.2.11 (dev)"
 INSTALL_DIR="/opt/rw-backup-restore"
 BACKUP_DIR="$INSTALL_DIR/backup"
 CONFIG_FILE="$INSTALL_DIR/config.env"
@@ -3009,6 +3009,10 @@ configure_settings() {
                                             echo -e "${RED}Bucket not found${RESET}"
                                             echo -e "${YELLOW}Details: ${s3_test_output}${RESET}"
                                             echo -e "${GREEN}Hint: Bucket '${S3_BUCKET}' does not exist. Check bucket name${RESET}"
+                                        elif echo "$s3_test_output" | grep -q "InvalidRegionName"; then
+                                            echo -e "${RED}Invalid region name${RESET}"
+                                            echo -e "${YELLOW}Details: ${s3_test_output}${RESET}"
+                                            echo -e "${GREEN}Hint: Region '${S3_REGION}' is not valid. Check available regions for your S3 provider${RESET}"
                                         elif echo "$s3_test_output" | grep -q "SSL\|CERTIFICATE\|HANDSHAKE"; then
                                             echo -e "${RED}SSL error — certificate is untrusted, expired or handshake failed${RESET}"
                                             echo -e "${YELLOW}Details: ${s3_test_output}${RESET}"
