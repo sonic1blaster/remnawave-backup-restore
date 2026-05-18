@@ -4,7 +4,7 @@ set -e
 
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin:$PATH"
 
-VERSION="3.2.6 (dev)"
+VERSION="3.2.7 (dev)"
 INSTALL_DIR="/opt/rw-backup-restore"
 BACKUP_DIR="$INSTALL_DIR/backup"
 CONFIG_FILE="$INSTALL_DIR/config.env"
@@ -2975,13 +2975,14 @@ configure_settings() {
                                         s3_test_endpoint="--endpoint-url $S3_ENDPOINT"
                                     fi
                                     local test_prefix="${S3_PREFIX:+${S3_PREFIX}/}"
-                                    local s3_test_output
+                                    local s3_test_output s3_exit_code
                                     s3_test_output=$(AWS_ACCESS_KEY_ID="$S3_ACCESS_KEY" \
                                        AWS_SECRET_ACCESS_KEY="$S3_SECRET_KEY" \
                                        AWS_DEFAULT_REGION="$S3_REGION" \
                                        aws s3 ls "s3://${S3_BUCKET}/${test_prefix}" \
-                                       $s3_test_endpoint 2>&1) || true
-                                    if echo "$s3_test_output" | grep -qv "^An error\|^Unable\|^SSL\|^Could not"; then
+                                       $s3_test_endpoint 2>&1)
+                                    s3_exit_code=$?
+                                    if [[ $s3_exit_code -eq 0 ]]; then
                                         print_message "SUCCESS" "$(t st_s3_test_ok)"
                                     else
                                         print_message "ERROR" "$(t st_s3_test_fail)"
