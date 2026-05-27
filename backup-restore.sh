@@ -4,7 +4,7 @@ set -e
 
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin:$PATH"
 
-VERSION="3.2.3"
+VERSION="3.2.4"
 INSTALL_DIR="/opt/rw-backup-restore"
 BACKUP_DIR="$INSTALL_DIR/backup"
 CONFIG_FILE="$INSTALL_DIR/config.env"
@@ -216,6 +216,7 @@ configure_bot_backup() {
                 echo " 2. $(t bot_jesus_priv)"
                 echo " 3. $(t bot_machka)"
                 echo " 4. $(t bot_snoups)"
+                echo " 5. $(t bot_minishop)"
                 echo " 0. $(t back)"
                 echo ""
                 
@@ -226,6 +227,7 @@ configure_bot_backup() {
                     2) BOT_BACKUP_SELECTED="Приватный бот от Иисуса"; bot_folder="rwp-shop" ;;
                     3) BOT_BACKUP_SELECTED="Бот от Мачки"; bot_folder="remnawave-tg-shop" ;;
                     4) BOT_BACKUP_SELECTED="Бот от Snoups"; bot_folder="remnashop" ;;
+                    5) BOT_BACKUP_SELECTED="Бот Minishop"; bot_folder="remnawave-minishop" ;;
                     0) continue ;;
                     *) print_message "ERROR" "$(t invalid_input)"; sleep 1; continue ;;
                 esac
@@ -329,6 +331,9 @@ get_bot_params() {
             ;;
         "Бот от Snoups")
             echo "remnashop-db|remnashop-db-data|remnashop|remnashop-db"
+            ;;
+        "Бот Minishop")
+            echo "remnawave-minishop-postgres|remnawave-minishop-db-data|remnawave-minishop|postgres"
             ;;
         *)
             echo "|||"
@@ -451,6 +456,7 @@ restore_bot_backup() {
     echo " 2. $(t bot_jesus_priv)"
     echo " 3. $(t bot_machka)"
     echo " 4. $(t bot_snoups)"
+    echo " 5. $(t bot_minishop)"
     echo ""
     
     local bot_choice
@@ -462,6 +468,7 @@ restore_bot_backup() {
             2) selected_bot_name="Приватный бот от Иисуса"; break ;;
             3) selected_bot_name="Бот от Мачки"; break ;;
             4) selected_bot_name="Бот от Snoups"; break ;;
+            5) selected_bot_name="Бот Minishop"; break ;;
             *) print_message "ERROR" "$(t invalid_input)" ;;
         esac
     done
