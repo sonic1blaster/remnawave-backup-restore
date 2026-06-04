@@ -4,13 +4,15 @@ set -e
 
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin:$PATH"
 
-VERSION="3.2.11 (dev)"
+VERSION="3.2.12 (dev)"
 INSTALL_DIR="/opt/rw-backup-restore"
 BACKUP_DIR="$INSTALL_DIR/backup"
 CONFIG_FILE="$INSTALL_DIR/config.env"
 SCRIPT_NAME="backup-restore.sh"
 SCRIPT_PATH="$INSTALL_DIR/$SCRIPT_NAME"
 RETAIN_BACKUPS_DAYS=7
+RETAIN_BACKUPS_VALUE=7
+RETAIN_BACKUPS_UNIT="days"
 S3_RETAIN_DAYS=30
 SYMLINK_PATH="/usr/local/bin/rw-backup"
 REMNALABS_ROOT_DIR=""
@@ -711,6 +713,8 @@ S3_REGION="$S3_REGION"
 S3_PREFIX="$S3_PREFIX"
 S3_RETAIN_DAYS="$S3_RETAIN_DAYS"
 RETAIN_BACKUPS_DAYS="$RETAIN_BACKUPS_DAYS"
+RETAIN_BACKUPS_VALUE="${RETAIN_BACKUPS_VALUE:-$RETAIN_BACKUPS_DAYS}"
+RETAIN_BACKUPS_UNIT="${RETAIN_BACKUPS_UNIT:-days}"
 CRON_TIMES="$CRON_TIMES"
 REMNALABS_ROOT_DIR="$REMNALABS_ROOT_DIR"
 TG_MESSAGE_THREAD_ID="$TG_MESSAGE_THREAD_ID"
@@ -762,6 +766,8 @@ load_or_create_config() {
         S3_PREFIX=${S3_PREFIX:-}
         S3_RETAIN_DAYS=${S3_RETAIN_DAYS:-30}
         RETAIN_BACKUPS_DAYS=${RETAIN_BACKUPS_DAYS:-7}
+        RETAIN_BACKUPS_VALUE=${RETAIN_BACKUPS_VALUE:-$RETAIN_BACKUPS_DAYS}
+        RETAIN_BACKUPS_UNIT=${RETAIN_BACKUPS_UNIT:-days}
         LANG_CODE=${LANG_CODE:-}
         AUTO_UPDATE=${AUTO_UPDATE:-false}
         
@@ -1660,8 +1666,12 @@ METAEOF
     
     echo ""
     
-    print_message "INFO" "$(printf "$(t bk_retention)" "$RETAIN_BACKUPS_DAYS")"
-    find "$BACKUP_DIR" -maxdepth 1 -name "remnawave_backup_*.tar.gz" -mtime +$RETAIN_BACKUPS_DAYS -delete
+    print_message "INFO" "$(printf "$(t bk_retention)" "$RETAIN_BACKUPS_VALUE") ${RETAIN_BACKUPS_UNIT}"
+    if [[ "$RETAIN_BACKUPS_UNIT" == "hours" ]]; then
+        find "$BACKUP_DIR" -maxdepth 1 -name "remnawave_backup_*.tar.gz" -mmin +$((RETAIN_BACKUPS_VALUE * 60)) -delete
+    else
+        find "$BACKUP_DIR" -maxdepth 1 -name "remnawave_backup_*.tar.gz" -mmin +$((RETAIN_BACKUPS_VALUE * 24 * 60)) -delete
+    fi
     print_message "SUCCESS" "$(t bk_retention_ok)"
     
     if [[ "$UPLOAD_METHOD" == "s3" ]]; then
@@ -3246,7 +3256,7 @@ configure_settings() {
                 clear
                 echo -e "${GREEN}${BOLD}$(t st_retention_title)${RESET}"
                 echo ""
-                print_message "INFO" "$(t st_retention_local) ${BOLD}${RETAIN_BACKUPS_DAYS}${RESET} $(t st_retention_days)"
+                print_message "INFO" "$(t st_retention_local) ${BOLD}${RETAIN_BACKUPS_VALUE}${RESET} ${RETAIN_BACKUPS_UNIT}"
                 print_message "INFO" "$(t st_retention_s3) ${BOLD}${S3_RETAIN_DAYS}${RESET} $(t st_retention_days)"
                 echo ""
                 echo "   1. $(t st_retention_change_local)"
@@ -3259,11 +3269,19 @@ configure_settings() {
 
                 case $ret_choice in
                     1)
-                        read -rp "   $(printf "$(t st_retention_enter_local)" "$RETAIN_BACKUPS_DAYS")" new_local_ret
-                        RETAIN_BACKUPS_DAYS="${new_local_ret:-$RETAIN_BACKUPS_DAYS}"
+                        echo "   1. $(t st_retention_days)"
+                        echo "   2. $(t st_retention_hours)"
+                        read -rp "   $(t select_option)" unit_choice
+                        case $unit_choice in
+                            1) RETAIN_BACKUPS_UNIT="days" ;;
+                            2) RETAIN_BACKUPS_UNIT="hours" ;;
+                        esac
+                        read -rp "   $(printf "$(t st_retention_enter_local)" "$RETAIN_BACKUPS_VALUE")" new_local_ret
+                        RETAIN_BACKUPS_VALUE="${new_local_ret:-$RETAIN_BACKUPS_VALUE}"
                         save_config
-                        print_message "SUCCESS" "$(t st_retention_local_ok) ${BOLD}${RETAIN_BACKUPS_DAYS}${RESET} $(t st_retention_days)"
+                        print_message "SUCCESS" "$(t st_retention_local_ok) ${BOLD}${RETAIN_BACKUPS_VALUE}${RESET} ${RETAIN_BACKUPS_UNIT}"
                         ;;
+
                     2)
                         read -rp "   $(printf "$(t st_retention_enter_s3)" "$S3_RETAIN_DAYS")" new_s3_ret
                         S3_RETAIN_DAYS="${new_s3_ret:-$S3_RETAIN_DAYS}"
