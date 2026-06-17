@@ -723,6 +723,7 @@ CRON_TIMES="$CRON_TIMES"
 REMNALABS_ROOT_DIR="$REMNALABS_ROOT_DIR"
 TG_MESSAGE_THREAD_ID="$TG_MESSAGE_THREAD_ID"
 TG_PROXY="$TG_PROXY"
+TG_API_ROOT="$TG_API_ROOT"
 BOT_BACKUP_ENABLED="$BOT_BACKUP_ENABLED"
 BOT_BACKUP_PATH="$BOT_BACKUP_PATH"
 BOT_BACKUP_SELECTED="$BOT_BACKUP_SELECTED"
@@ -754,6 +755,7 @@ load_or_create_config() {
         REMNALABS_ROOT_DIR=${REMNALABS_ROOT_DIR:-}
         TG_MESSAGE_THREAD_ID=${TG_MESSAGE_THREAD_ID:-}
         TG_PROXY=${TG_PROXY:-}
+        TG_API_ROOT=${TG_API_ROOT:-}
         SKIP_PANEL_BACKUP=${SKIP_PANEL_BACKUP:-false}
         DB_CONNECTION_TYPE=${DB_CONNECTION_TYPE:-docker}
         DB_HOST=${DB_HOST:-}
@@ -2711,12 +2713,14 @@ configure_settings() {
                     print_message "INFO" "$(t st_tg_chatid) ${BOLD}${CHAT_ID}${RESET}"
                     print_message "INFO" "$(t st_tg_thread) ${BOLD}${TG_MESSAGE_THREAD_ID:-$(t not_set)}${RESET}"
                     print_message "INFO" "$(t st_tg_proxy) ${BOLD}${TG_PROXY:-$(t not_set)}${RESET}"
+                    print_message "INFO" "$(t st_tg_api_root) ${BOLD}${TG_API_ROOT:-$(t not_set)}${RESET}"
                     echo ""
                     echo ""
                     echo "   1. $(t st_tg_change_token)"
                     echo "   2. $(t st_tg_change_id)"
                     echo "   3. $(t st_tg_change_thread)"
                     echo "   4. $(t st_tg_change_proxy)"
+                    echo "   5. $(t st_tg_change_api_root)"
                     echo ""
                     echo "   0. $(t back)"
                     echo ""
@@ -2758,6 +2762,19 @@ configure_settings() {
                                 print_message "SUCCESS" "$(t st_tg_proxy_ok)"
                             else
                                 print_message "SUCCESS" "$(t st_tg_proxy_cleared)"
+                            fi
+                            ;;
+                        5)
+                            print_message "INFO" "$(t st_tg_api_root_info)"
+                            print_message "INFO" "$(t st_tg_api_root_examples)"
+                            echo ""
+                            read -rp "   $(t st_tg_enter_proxy)" NEW_TG_API_ROOT
+                            TG_API_ROOT="$NEW_TG_API_ROOT"
+                            save_config
+                            if [[ -n "$TG_API_ROOT" ]]; then
+                                print_message "SUCCESS" "$(t st_tg_api_root_ok)"
+                            else
+                                print_message "SUCCESS" "$(t st_tg_api_root_cleared)"
                             fi
                             ;;
                         0) break ;;
