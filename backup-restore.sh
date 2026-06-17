@@ -37,6 +37,7 @@ DB_POSTGRES_VERSION="17"
 CRON_TIMES=""
 TG_MESSAGE_THREAD_ID=""
 TG_PROXY=""
+TG_API_ROOT="https://api.telegram.org"
 UPDATE_AVAILABLE=false
 AUTO_UPDATE="false"
 BACKUP_EXCLUDE_PATTERNS="*.log *.tmp .git"
@@ -1174,7 +1175,7 @@ send_telegram_message() {
         return 1
     fi
 
-    local url="https://api.telegram.org/bot$BOT_TOKEN/sendMessage"
+    local url="$TG_API_ROOT/bot$BOT_TOKEN/sendMessage"
     local send_text="$message"
 
     if [[ "$parse_mode" == "MarkdownV2" ]]; then
@@ -1234,7 +1235,7 @@ send_telegram_document() {
     fi
 
     local api_response
-    api_response=$(curl -s -X POST ${TG_PROXY:+--proxy "$TG_PROXY"} "https://api.telegram.org/bot$BOT_TOKEN/sendDocument" \
+    api_response=$(curl -s -X POST ${TG_PROXY:+--proxy "$TG_PROXY"} "$TG_API_ROOT/bot$BOT_TOKEN/sendDocument" \
         "${form_params[@]}" \
         -w "%{http_code}" -o /dev/null 2>&1)
 
@@ -1691,7 +1692,7 @@ METAEOF
                             local release_url="https://github.com/distillium/remnawave-backup-restore/releases/tag/${REMOTE_VERSION_LATEST}"
                             local keyboard="{\"inline_keyboard\":[[{\"text\":\"$(t tg_auto_update_changelog)\",\"url\":\"${release_url}\"}]]}"
 
-                            curl -s -X POST ${TG_PROXY:+--proxy "$TG_PROXY"} "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+                            curl -s -X POST ${TG_PROXY:+--proxy "$TG_PROXY"} "${TG_API_ROOT}/bot${BOT_TOKEN}/sendMessage" \
                                 -d "chat_id=${CHAT_ID}" \
                                 -d "text=${auto_update_msg}" \
                                 -d "parse_mode=Markdown" \
